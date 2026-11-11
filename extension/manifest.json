@@ -3,7 +3,16 @@
   "name": "Office Dashboard – New Tab",
   "version": "1.0.0",
   "description": "Opens your Office Dashboard (running on localhost) as the Chrome new tab page.",
-  "chrome_url_overrides": { "newtab": "newtab.html" },
-  "icons": { "128": "icon.png" },
-  "permissions": []
+  "chrome_url_overrides": {
+    "newtab": "redirect.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "tabs"
+  ],
+  "icons": {
+    "128": "icon.png"
+  }
 }
