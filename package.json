@@ -1,0 +1,17 @@
+{
+  "name": "office-dashboard",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Customizable new-tab dashboard for your office work environment",
+  "scripts": {
+    "install:all": "npm install && npm --prefix server install && npm --prefix web install",
+    "build": "npm --prefix web run build",
+    "start": "npm --prefix server start",
+    "dev:server": "npm --prefix server run dev",
+    "dev:web": "npm --prefix web run dev",
+    "dev:start-all": "concurrently --names \"CLIENT,SERVER\" --prefix-colors \"bgBlue.bold,bgMagenta.bold\" \"npm --prefix web run dev\" \"npm --prefix server run dev\""
+  },
+  "dependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

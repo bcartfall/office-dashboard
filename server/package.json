@@ -1,0 +1,19 @@
+{
+  "name": "office-dashboard-server",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^5.3.0",
+    "node-ical": "^0.27.6",
+    "systeminformation": "^5.33.19"
+  }
+}
