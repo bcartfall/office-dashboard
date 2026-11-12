@@ -18,6 +18,7 @@ import GpuPlugin from './GpuPlugin.vue';
 import LaunchAppPlugin from './LaunchAppPlugin.vue';
 import HomeAssistantPlugin from './HomeAssistantPlugin.vue';
 import CalendarPlugin from './CalendarPlugin.vue';
+import JellyfinPlugin from './JellyfinPlugin.vue';
 import { api } from '../api.js';
 import { bytes } from '../format.js';
 
@@ -108,7 +109,7 @@ export const plugins = {
     kind: 'tile',
     icon: 'rocket',
     component: LaunchAppPlugin,
-    defaults: { title: 'App', icon: 'rocket', command: '', args: '' },
+    defaults: { title: 'App', icon: 'rocket', command: '', args: '', hotkey: '' },
     settings: [
       {
         key: 'command',
@@ -123,6 +124,12 @@ export const plugins = {
         type: 'text',
         placeholder: '--new-window "C:\\My Projects"',
         hint: 'Space separated; use quotes for values containing spaces.',
+      },
+      {
+        key: 'hotkey',
+        label: 'Hotkey',
+        type: 'hotkey',
+        hint: 'Shown in the tile’s top-right corner. Works while the dashboard tab is focused; the browser keeps its own shortcuts (Ctrl+T, Ctrl+W…), so prefer single keys, F-keys or Alt+key.',
       },
     ],
   },
@@ -154,7 +161,7 @@ export const plugins = {
   },
   calendar: {
     name: 'Calendar',
-    description: 'Day list of events from one or more ICS calendars',
+    description: 'Day list of events from your Google calendars',
     kind: 'widget',
     minHeight: 150,
     icon: 'calendar',
@@ -163,12 +170,65 @@ export const plugins = {
     settings: [
       {
         key: 'calendars',
-        label: 'Calendars',
+        label: 'Google calendars',
         type: 'calendars',
-        hint: 'Each calendar has its own ICS URL and color; the color appears before the event title. Private ICS URLs are stored in plain text in data/layout.json.',
+        hint: 'Read-only access through the Google Calendar API. Each calendar has its own color, shown before the event title.',
       },
       { key: 'daysToShow', label: 'Days to show (1 = today only)', type: 'number', min: 1, max: 14, integer: true, default: 1 },
       { key: 'refreshSeconds', label: 'Refresh interval (seconds)', type: 'number', min: 30, max: 86400, integer: true, default: 300 },
+    ],
+  },
+  jellyfin: {
+    name: 'Jellyfin',
+    description: 'Up Next episodes — click one to play it in the Jellyfin desktop app',
+    kind: 'widget',
+    minHeight: 190,
+    basis: 420,
+    icon: 'tv',
+    component: JellyfinPlugin,
+    defaults: {
+      title: 'Up Next',
+      icon: 'tv',
+      url: '',
+      apiKey: '',
+      userId: '',
+      maxItems: 8,
+      refreshSeconds: 120,
+      desktopClient: 'Jellyfin Desktop|Jellyfin Media Player',
+      desktopCommand: '',
+      desktopArgs: '',
+    },
+    settings: [
+      {
+        key: 'url',
+        label: 'Jellyfin server URL',
+        type: 'text',
+        placeholder: 'http://192.168.1.20:8096',
+        hint: 'Your Jellyfin server on the local network.',
+      },
+      {
+        key: 'apiKey',
+        label: 'API key',
+        type: 'password',
+        hint: 'Jellyfin Dashboard → Advanced → API Keys → “+”. Stored in plain text in data/layout.json.',
+      },
+      { key: 'userId', label: 'Jellyfin user', type: 'jellyfin-user' },
+      { key: 'maxItems', label: 'Episodes to show', type: 'number', min: 1, max: 40, integer: true, default: 8 },
+      { key: 'refreshSeconds', label: 'Refresh interval (seconds)', type: 'number', min: 15, max: 86400, integer: true, default: 120 },
+      {
+        key: 'desktopCommand',
+        label: 'Desktop app command (optional)',
+        type: 'text',
+        placeholder: 'C:\\Program Files\\Jellyfin Desktop\\jellyfin-desktop.exe',
+        hint: 'Started on this machine when the Jellyfin desktop app isn’t running yet; the episode then plays once the app has signed in. Leave blank to only control an app that is already open.',
+      },
+      { key: 'desktopArgs', label: 'Desktop app arguments', type: 'text' },
+      {
+        key: 'desktopClient',
+        label: 'Desktop app client name(s)',
+        type: 'text',
+        hint: 'How the desktop app identifies itself to the server (Dashboard → Devices). Separate alternatives with |.',
+      },
     ],
   },
 };

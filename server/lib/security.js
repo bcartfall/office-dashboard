@@ -6,6 +6,8 @@
  *  - Origin check      -> blocks cross-site requests (CSRF) from other pages
  *  - JSON content-type -> forces a CORS preflight for anything that mutates
  */
+import { VITE_PORT } from './config.js';
+
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 
 export function guard({ port }) {
@@ -17,8 +19,8 @@ export function guard({ port }) {
   const allowedOrigins = new Set([
     `http://localhost:${port}`,
     `http://127.0.0.1:${port}`,
-    'http://localhost:5257', // vite dev server
-    'http://127.0.0.1:5257',
+    `http://localhost:${VITE_PORT}`, // vite dev server
+    `http://127.0.0.1:${VITE_PORT}`,
     ...extra,
   ]);
 

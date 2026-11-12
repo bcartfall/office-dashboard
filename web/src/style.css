@@ -83,3 +83,12 @@ body {
   scrollbar-width: thin;
   scrollbar-color: #3f3f46 transparent;
 }
+
+/* Until the first layout has settled nothing may animate (panels, meters, bars): the page appears fully formed. */
+.no-anim,
+.no-anim *,
+.no-anim *::before,
+.no-anim *::after {
+  transition: none !important;
+  animation: none !important;
+}

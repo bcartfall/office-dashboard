@@ -5,7 +5,7 @@ import { usePolling } from '../composables/usePolling.js';
 import Icon from '../components/Icon.vue';
 import ErrorLine from '../components/ErrorLine.vue';
 
-const props = defineProps({ config: { type: Object, required: true } });
+const props = defineProps({ config: { type: Object, required: true }, instanceId: { type: String, default: '' } });
 const emit = defineEmits(['configure']);
 
 const busy = reactive({}); // buttonId -> 'busy' | 'ok' | 'error'

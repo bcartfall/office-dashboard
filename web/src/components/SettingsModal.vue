@@ -6,6 +6,8 @@ import { iconNames } from '../icons.js';
 import Icon from './Icon.vue';
 import HaButtonsEditor from './HaButtonsEditor.vue';
 import CalendarsEditor from './CalendarsEditor.vue';
+import HotkeyInput from './HotkeyInput.vue';
+import JellyfinUserPicker from './JellyfinUserPicker.vue';
 
 const props = defineProps({ plugin: { type: Object, required: true } });
 const emit = defineEmits(['close']);
@@ -89,6 +91,17 @@ onMounted(() => first.value?.focus());
             <div v-else-if="f.type === 'ha-buttons'">
               <div class="mb-2 text-sm text-zinc-300">{{ f.label }}</div>
               <HaButtonsEditor :buttons="draft.buttons" :conn="{ url: draft.url, token: draft.token }" />
+            </div>
+
+            <div v-else-if="f.type === 'hotkey'">
+              <div class="mb-1 text-sm text-zinc-300">{{ f.label }}</div>
+              <HotkeyInput v-model="draft[f.key]" />
+              <p v-if="f.hint" class="mt-1 block text-xs text-zinc-500">{{ f.hint }}</p>
+            </div>
+
+            <div v-else-if="f.type === 'jellyfin-user'">
+              <div class="mb-2 text-sm text-zinc-300">{{ f.label }}</div>
+              <JellyfinUserPicker :draft="draft" />
             </div>
 
             <div v-else-if="f.type === 'calendars'">

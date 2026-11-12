@@ -1,6 +1,7 @@
 import si from 'systeminformation';
 import { execFile } from 'node:child_process';
 import { cached } from '../lib/cache.js';
+import { everySeconds, keepPoints } from '../lib/bg-config.js';
 
 const volumes = () => cached('disk:fs', 5000, () => si.fsSize());
 
@@ -8,6 +9,15 @@ export default {
   id: 'disk',
   name: 'Disk',
   description: 'Disk usage plus read/write throughput',
+  background: {
+    interval: everySeconds,
+    points: keepPoints,
+    signature: (config) => String(config?.mount || ''), // another volume = a different graph
+    run: async (config) => {
+      const d = await read(String(config?.mount || ''));
+      return [d.readBytesPerSec, d.writeBytesPerSec];
+    },
+  },
   routes(router) {
     // Used to populate the "mount" picker in the plugin settings.
     router.get('/mounts', async (_req, res) => {
@@ -15,33 +25,34 @@ export default {
       res.json(fsList.map((d) => ({ mount: d.mount, fs: d.fs, size: d.size })));
     });
 
-    router.get('/data', async (req, res) => {
-      const mount = typeof req.query.mount === 'string' ? req.query.mount : '';
-      const fsList = await volumes();
-
-      const vol =
-        (mount && fsList.find((d) => d.mount === mount)) ||
-        fsList.find((d) => d.mount === '/' || d.mount === 'C:') ||
-        fsList[0];
-
-      // Windows reports throughput per drive letter; elsewhere it is machine-wide.
-      const ioKey = IS_WIN ? vol?.mount ?? '' : '';
-      const io = await cached(`disk:io:${ioKey}`, 900, () => readIo(ioKey));
-
-      res.json({
-        mount: vol?.mount ?? null,
-        fs: vol?.fs ?? null,
-        size: vol?.size ?? 0,
-        used: vol?.used ?? 0,
-        usedPercent: Math.round((vol?.use ?? 0) * 10) / 10,
-        readBytesPerSec: io.read,
-        writeBytesPerSec: io.write,
-      });
-    });
+    router.get('/data', async (req, res) => res.json(await read(typeof req.query.mount === 'string' ? req.query.mount : '')));
   },
 };
 
 const IS_WIN = process.platform === 'win32';
+
+async function read(mount) {
+  const fsList = await volumes();
+
+  const vol =
+    (mount && fsList.find((d) => d.mount === mount)) ||
+    fsList.find((d) => d.mount === '/' || d.mount === 'C:') ||
+    fsList[0];
+
+  // Windows reports throughput per drive letter; elsewhere it is machine-wide.
+  const ioKey = IS_WIN ? vol?.mount ?? '' : '';
+  const io = await cached(`disk:io:${ioKey}`, 900, () => readIo(ioKey));
+
+  return {
+    mount: vol?.mount ?? null,
+    fs: vol?.fs ?? null,
+    size: vol?.size ?? 0,
+    used: vol?.used ?? 0,
+    usedPercent: Math.round((vol?.use ?? 0) * 10) / 10,
+    readBytesPerSec: io.read,
+    writeBytesPerSec: io.write,
+  };
+}
 
 // systeminformation's fsStats()/disksIO() are not implemented on Windows (they
 // resolve to null), which is why read/write used to be stuck at 0 B/s there.

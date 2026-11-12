@@ -1,7 +1,8 @@
 <script setup>
-import { reactive, computed, toRef } from 'vue';
+import { computed, toRef } from 'vue';
 import { api } from '../api.js';
-import { usePolling, pushHistory } from '../composables/usePolling.js';
+import { usePolling } from '../composables/usePolling.js';
+import { useServerHistory } from '../composables/useServerHistory.js';
 import { bytes, rate, pct, loadColor } from '../format.js';
 import Sparkline from '../components/Sparkline.vue';
 import Meter from '../components/Meter.vue';
@@ -10,20 +11,15 @@ import ErrorLine from '../components/ErrorLine.vue';
 const READ = '#38bdf8';
 const WRITE = '#fb923c';
 
-const props = defineProps({ config: { type: Object, required: true } });
-const reads = reactive([]);
-const writes = reactive([]);
+const props = defineProps({ config: { type: Object, required: true }, instanceId: { type: String, default: '' } });
+const hist = useServerHistory(() => props.instanceId, () => props.config.historyPoints, 2);
+const [reads, writes] = hist.series;
 
-const { data, error } = usePolling(
-  () => api.get(`/plugins/disk/data?mount=${encodeURIComponent(props.config.mount || '')}`),
-  toRef(() => props.config.intervalSeconds),
-  {
-    onData: (d) => {
-      pushHistory(reads, d.readBytesPerSec, props.config.historyPoints);
-      pushHistory(writes, d.writeBytesPerSec, props.config.historyPoints);
-    },
-  }
-);
+const { data, error } = usePolling(async () => {
+  const d = await api.get(`/plugins/disk/data?mount=${encodeURIComponent(props.config.mount || '')}`);
+  await hist.sync([d.readBytesPerSec, d.writeBytesPerSec]);
+  return d;
+}, toRef(() => props.config.intervalSeconds));
 
 const color = computed(() => loadColor(data.value?.usedPercent ?? 0));
 </script>

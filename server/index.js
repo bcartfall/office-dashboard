@@ -4,12 +4,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { guard } from './lib/security.js';
 import layoutRouter from './lib/layout.js';
+import { historyRouter, startBackground } from './lib/background.js';
+import { PORT, HOST, DEV, VITE_PORT } from './lib/config.js';
 import { loadPlugins } from './plugins/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PORT = Number(process.env.PORT) || 3944;
-// Bound to loopback only: this server can launch programs on your machine.
-const HOST = process.env.HOST || '127.0.0.1';
+// HOST defaults to loopback only: this server can launch programs on your machine.
 
 const app = express();
 app.disable('x-powered-by');
@@ -19,6 +19,7 @@ app.use(express.json({ limit: '1mb' }));
 app.use('/api', guard({ port: PORT }));
 app.get('/api/health', (_req, res) => res.json({ ok: true, time: Date.now() }));
 app.use('/api/layout', layoutRouter);
+app.use('/api/history', historyRouter);
 
 const plugins = await loadPlugins();
 app.get('/api/plugins', (_req, res) =>
@@ -29,6 +30,8 @@ for (const plugin of plugins) {
   plugin.routes(router);
   app.use(`/api/plugins/${plugin.id}`, router);
 }
+
+startBackground(plugins);
 
 // Unknown API routes -> JSON 404 (not the SPA)
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));
@@ -56,6 +59,7 @@ app.use((err, _req, res, _next) => {
 });
 
 app.listen(PORT, HOST, () => {
-  console.log(`Office dashboard running at http://localhost:${PORT}`);
+  console.log(`Office dashboard${DEV ? ' (development)' : ''} API at http://localhost:${PORT}`);
+  if (DEV) console.log(`Vite dev server: http://localhost:${VITE_PORT}`);
   console.log(`Plugins: ${plugins.map((p) => p.id).join(', ')}`);
 });

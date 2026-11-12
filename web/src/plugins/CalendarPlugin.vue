@@ -4,9 +4,10 @@ import { api } from '../api.js';
 import { usePolling } from '../composables/usePolling.js';
 import ErrorLine from '../components/ErrorLine.vue';
 
-const props = defineProps({ config: { type: Object, required: true } });
+const props = defineProps({ config: { type: Object, required: true }, instanceId: { type: String, default: '' } });
+const emit = defineEmits(['configure']);
 
-const feeds = computed(() => (props.config.calendars || []).filter((c) => c.url?.trim()));
+const feeds = computed(() => (props.config.calendars || []).filter((c) => c.id));
 const days = computed(() => Math.min(14, Math.max(1, Number(props.config.daysToShow) || 1)));
 
 // "now" drives past-event dimming and the midnight rollover.
@@ -20,16 +21,16 @@ const dayKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDa
 const hhmm = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
 const { data, error, refresh } = usePolling(async () => {
-  if (!feeds.value.length) return { events: [], errors: [] };
+  if (!feeds.value.length) return { connected: true, events: [], errors: [] };
   return api.post('/plugins/calendar/events', {
     days: days.value,
-    calendars: feeds.value.map(({ id, name, url }) => ({ id, name, url })),
+    calendars: feeds.value.map(({ id, name }) => ({ id, name })),
   });
 }, toRef(() => props.config.refreshSeconds));
 
 // Re-fetch right away when feeds/range change (and when the date rolls over).
 watch(
-  [() => JSON.stringify(feeds.value.map((c) => [c.id, c.url, c.name])), days, () => dayKey(now.value)],
+  [() => JSON.stringify(feeds.value.map((c) => [c.id, c.name])), days, () => dayKey(now.value)],
   () => refresh()
 );
 
@@ -87,7 +88,13 @@ const errorText = computed(() => {
 
 <template>
   <div class="flex h-full min-h-0 flex-col gap-2">
-    <p v-if="!feeds.length" class="py-4 text-center text-sm text-zinc-500">Add a calendar (ICS URL) in this plugin’s settings.</p>
+    <div v-if="data && data.connected === false" class="flex flex-1 flex-col items-center justify-center gap-2 py-4 text-center text-sm text-zinc-500">
+      <span>Connect your Google account to see events</span>
+      <button class="rounded-lg bg-zinc-800 px-3 py-1.5 text-xs text-sky-300 hover:bg-zinc-700" @click="emit('configure')">Open settings</button>
+    </div>
+    <p v-else-if="!feeds.length" class="py-4 text-center text-sm text-zinc-500">
+      Choose calendars in this plugin’s <button class="text-sky-300 hover:underline" @click="emit('configure')">settings</button>.
+    </p>
 
     <div v-else class="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
       <section v-for="(s, idx) in sections" :key="s.key">

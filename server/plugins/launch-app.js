@@ -26,7 +26,7 @@ export default {
   },
 };
 
-function launch(command, args) {
+export function launch(command, args) {
   const isUrl = /^https?:\/\//i.test(command);
   let file = command;
   let argv = args;

@@ -1,17 +1,21 @@
 <script setup>
-import { reactive, computed, toRef } from 'vue';
+import { computed, toRef } from 'vue';
 import { api } from '../api.js';
-import { usePolling, pushHistory } from '../composables/usePolling.js';
+import { usePolling } from '../composables/usePolling.js';
+import { useServerHistory } from '../composables/useServerHistory.js';
 import { pct, loadColor } from '../format.js';
 import Sparkline from '../components/Sparkline.vue';
 import ErrorLine from '../components/ErrorLine.vue';
 
-const props = defineProps({ config: { type: Object, required: true } });
-const history = reactive([]);
+const props = defineProps({ config: { type: Object, required: true }, instanceId: { type: String, default: '' } });
+const hist = useServerHistory(() => props.instanceId, () => props.config.historyPoints, 1);
+const [history] = hist.series;
 
-const { data, error } = usePolling(() => api.get('/plugins/cpu/data'), toRef(() => props.config.intervalSeconds), {
-  onData: (d) => pushHistory(history, d.load, props.config.historyPoints),
-});
+const { data, error } = usePolling(async () => {
+  const d = await api.get('/plugins/cpu/data');
+  await hist.sync([d.load]);
+  return d;
+}, toRef(() => props.config.intervalSeconds));
 
 const load = computed(() => data.value?.load ?? 0);
 const color = computed(() => loadColor(load.value));

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { GridLayout, GridItem } from 'grid-layout-plus';
 import { LayoutGrid, Pencil, Check, Plus, CloudOff } from 'lucide-vue-next';
 import { state, load, addPanel } from './store/layout.js';
@@ -9,25 +9,34 @@ import SettingsModal from './components/SettingsModal.vue';
 const settingsTarget = ref(null); // the plugin instance being configured
 const openSettings = (_panel, plugin) => (settingsTarget.value = plugin);
 
-// Header clock
+// Header clock: 24-hour HH:MM:SS, re-armed on every second boundary so it never drifts or skips a second.
 const now = ref(new Date());
 let tick;
-onMounted(() => {
-  load();
-  tick = setInterval(() => (now.value = new Date()), 1000 * 15);
+function schedule() {
+  now.value = new Date();
+  tick = setTimeout(schedule, 1000 - (Date.now() % 1000) + 5);
+}
+// Panels must appear in place, not slide in: transitions stay off until the first layout has settled.
+const settled = ref(false);
+onMounted(async () => {
+  schedule();
+  await load();
+  await nextTick();
+  requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(() => (settled.value = true), 300)));
 });
-onBeforeUnmount(() => clearInterval(tick));
-const time = computed(() => now.value.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+onBeforeUnmount(() => clearTimeout(tick));
+const pad = (n) => String(n).padStart(2, '0');
+const time = computed(() => `${pad(now.value.getHours())}:${pad(now.value.getMinutes())}:${pad(now.value.getSeconds())}`);
 const date = computed(() => now.value.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' }));
 </script>
 
 <template>
-  <div class="mx-auto max-w-[1800px] px-4 pb-10 pt-4 sm:px-6">
+  <div class="mx-auto max-w-[1800px] px-4 pb-10 pt-4 sm:px-6" :class="{ 'no-anim': !settled }">
     <header class="mb-4 flex flex-wrap items-center gap-3">
       <div class="flex items-center gap-2.5">
         <div class="grid size-9 place-items-center rounded-xl bg-sky-500/15 text-sky-300"><LayoutGrid :size="18" /></div>
         <div>
-          <h1 class="text-lg font-semibold leading-tight text-zinc-100">{{ time }}</h1>
+          <h1 class="text-lg font-semibold leading-tight tabular-nums text-zinc-100">{{ time }}</h1>
           <p class="text-xs leading-tight text-zinc-500">{{ date }}</p>
         </div>
       </div>

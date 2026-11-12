@@ -55,11 +55,12 @@ function sanitize(panels) {
     h: Number.isFinite(p.h) ? p.h : 6,
     plugins: (Array.isArray(p.plugins) ? p.plugins : [])
       .filter((pl) => pl && typeof pl.type === 'string')
-      .map((pl) => ({
-        id: String(pl.id ?? uid()),
-        type: pl.type,
-        config: { ...clone(registry[pl.type]?.defaults ?? {}), ...(pl.config ?? {}) },
-      })),
+      .map((pl) => {
+        const config = { ...clone(registry[pl.type]?.defaults ?? {}), ...(pl.config ?? {}) };
+        // Calendars used to be ICS feeds ({ url }); they are Google calendars now, so drop the old entries.
+        if (pl.type === 'calendar') config.calendars = (Array.isArray(config.calendars) ? config.calendars : []).filter((c) => c && c.id && !c.url);
+        return { id: String(pl.id ?? uid()), type: pl.type, config };
+      }),
   }));
 }
 

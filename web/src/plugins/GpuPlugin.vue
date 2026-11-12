@@ -1,7 +1,8 @@
 <script setup>
-import { reactive, computed, toRef } from 'vue';
+import { computed, toRef } from 'vue';
 import { api } from '../api.js';
-import { usePolling, pushHistory } from '../composables/usePolling.js';
+import { usePolling } from '../composables/usePolling.js';
+import { useServerHistory } from '../composables/useServerHistory.js';
 import { mb, pct, loadColor } from '../format.js';
 import Sparkline from '../components/Sparkline.vue';
 import ErrorLine from '../components/ErrorLine.vue';
@@ -9,22 +10,18 @@ import ErrorLine from '../components/ErrorLine.vue';
 const UTIL = '#a78bfa';
 const MEM = '#34d399';
 
-const props = defineProps({ config: { type: Object, required: true } });
-const util = reactive([]);
-const vram = reactive([]);
+const props = defineProps({ config: { type: Object, required: true }, instanceId: { type: String, default: '' } });
+const hist = useServerHistory(() => props.instanceId, () => props.config.historyPoints, 2);
+const [util, vram] = hist.series;
 
-const { data, error } = usePolling(
-  () => api.get(`/plugins/gpu/data?index=${Number(props.config.gpuIndex) || 0}`),
-  toRef(() => props.config.intervalSeconds),
-  {
-    onData: (d) => {
-      if (!d.available) return;
-      pushHistory(util, d.utilization ?? 0, props.config.historyPoints);
-      const memPct = d.memoryTotalMB && d.memoryUsedMB != null ? (d.memoryUsedMB / d.memoryTotalMB) * 100 : 0;
-      pushHistory(vram, memPct, props.config.historyPoints);
-    },
+const { data, error } = usePolling(async () => {
+  const d = await api.get(`/plugins/gpu/data?index=${Number(props.config.gpuIndex) || 0}`);
+  if (d.available) {
+    const pctMem = d.memoryTotalMB && d.memoryUsedMB != null ? (d.memoryUsedMB / d.memoryTotalMB) * 100 : 0;
+    await hist.sync([d.utilization ?? 0, pctMem]);
   }
-);
+  return d;
+}, toRef(() => props.config.intervalSeconds));
 
 const memPct = computed(() =>
   data.value?.memoryTotalMB && data.value.memoryUsedMB != null ? (data.value.memoryUsedMB / data.value.memoryTotalMB) * 100 : null

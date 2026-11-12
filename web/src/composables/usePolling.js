@@ -33,19 +33,19 @@ export function usePolling(fetcher, interval, { onData } = {}) {
     }, seconds * 1000);
   }
 
+  // Catch up straight away when the tab comes back instead of waiting for the next interval.
+  const onVisible = () => !document.hidden && tick();
+
   watch(() => unref(interval), schedule);
   onMounted(() => {
     tick();
     schedule();
+    document.addEventListener('visibilitychange', onVisible);
   });
-  onBeforeUnmount(() => clearInterval(timer));
+  onBeforeUnmount(() => {
+    clearInterval(timer);
+    document.removeEventListener('visibilitychange', onVisible);
+  });
 
   return { data, error, refresh: tick };
-}
-
-/** Fixed-length rolling history, newest last. */
-export function pushHistory(list, value, max) {
-  list.push(value);
-  const limit = Math.max(10, Number(max) || 60);
-  if (list.length > limit) list.splice(0, list.length - limit);
 }

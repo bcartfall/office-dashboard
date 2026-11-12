@@ -59,7 +59,7 @@ function onDrop(e) {
     :style="
       isTile
         ? { flex: '1 1 118px', maxWidth: '220px', minHeight: '84px', maxHeight: '130px' }
-        : { flex: '1 1 250px', minHeight: (def.minHeight ?? 190) + 'px', display: 'flex', flexDirection: 'column' }
+        : { flex: `1 1 ${def.basis ?? 250}px`, minHeight: (def.minHeight ?? 190) + 'px', display: 'flex', flexDirection: 'column' }
     "
     :draggable="editing"
     @dragstart="onDragStart"
@@ -76,8 +76,8 @@ function onDrop(e) {
 
     <!-- Controls (hover, or always in edit mode) -->
     <div
-      class="absolute right-1.5 top-1.5 z-10 flex gap-0.5 rounded-lg bg-zinc-900/90 p-0.5 opacity-0 shadow transition group-hover:opacity-100 group-focus-within:opacity-100"
-      :class="editing ? '!opacity-100' : ''"
+      class="absolute top-1.5 z-10 flex gap-0.5 rounded-lg bg-zinc-900/90 p-0.5 opacity-0 shadow transition group-hover:opacity-100 group-focus-within:opacity-100"
+      :class="[isTile ? 'left-1.5' : 'right-1.5', editing ? '!opacity-100' : '']"
     >
       <button class="rounded p-1 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100" :aria-label="`Settings for ${plugin.config.title}`" title="Settings" @click.stop="emit('settings')">
         <Settings :size="13" />
@@ -88,7 +88,7 @@ function onDrop(e) {
     </div>
 
     <div :class="isTile ? 'h-full' : 'min-h-0 flex-1'">
-      <component :is="def.component" :config="plugin.config" @configure="emit('settings')" />
+      <component :is="def.component" :config="plugin.config" :instance-id="plugin.id" @configure="emit('settings')" />
     </div>
   </div>
 </template>
