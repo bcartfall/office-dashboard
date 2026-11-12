@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Office Dashboard – New Tab",
+  "name": "Dashboard - New Tab",
   "version": "1.0.0",
-  "description": "Opens your Office Dashboard (running on localhost) as the Chrome new tab page.",
+  "description": "Opens your Dashboard (running on localhost) as the Chrome new tab page.",
   "chrome_url_overrides": {
     "newtab": "redirect.html"
   },
