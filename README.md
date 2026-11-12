@@ -26,7 +26,36 @@ Then make it your new tab page:
 
 To use it as your **home page** instead: Chrome Settings → Appearance → *Show home button* → `http://localhost:3944`.
 
-Keep it running in the background by starting it at login (Task Scheduler / launchd / systemd user service — `node server/index.js`).
+## Run as Service
+
+Use nssm.
+
+```cmd
+C:\Tools\nssm\win64\nssm.exe install OfficeDashboard
+```
+
+### Application tab
+
+| Field | Value |
+|---|---|
+| Path | `C:\Windows\System32\cmd.exe` |
+| Startup directory | `C:\Path\To\office-dashboard` |
+| Arguments | `/c npm start` |
+
+Replace the startup directory with your actual project path.
+
+### Details tab
+
+| Field | Value |
+|---|---|
+| Display name | Office Dashboard |
+| Startup type | Automatic |
+
+### Start Service
+
+```cmd
+net start OfficeDashboard
+```
 
 ### Development
 
