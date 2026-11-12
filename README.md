@@ -8,7 +8,8 @@ Vue 3 + Tailwind frontend, Node/Express backend.
 - Plugin elements **auto-fill** their panel and re-flow as you add, remove, or drag them (even between panels).
 - Plugins included: CPU load, Memory, Disk (usage + read/write speed), GPU (utilization + dedicated memory),
   Calendar (Google Calendar API, any number of calendars each with its own color), Launch App (with hotkeys),
-  Jellyfin "Up Next", Home Assistant buttons.
+  Jellyfin "Up Next", Home Assistant buttons, Todo List (reorderable, checkable tasks with a right-click menu).
+- The **page title** (browser tab) defaults to "Office Dashboard" and can be changed in *Edit layout* mode.
 
 ## Quick start
 

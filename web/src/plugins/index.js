@@ -19,6 +19,7 @@ import LaunchAppPlugin from './LaunchAppPlugin.vue';
 import HomeAssistantPlugin from './HomeAssistantPlugin.vue';
 import CalendarPlugin from './CalendarPlugin.vue';
 import JellyfinPlugin from './JellyfinPlugin.vue';
+import TodoPlugin from './TodoPlugin.vue';
 import { api } from '../api.js';
 import { bytes } from '../format.js';
 
@@ -230,6 +231,16 @@ export const plugins = {
         hint: 'How the desktop app identifies itself to the server (Dashboard → Devices). Separate alternatives with |.',
       },
     ],
+  },
+  todo: {
+    name: 'Todo List',
+    description: 'Tasks you can reorder and check off',
+    kind: 'widget',
+    minHeight: 220,
+    icon: 'todo',
+    component: TodoPlugin,
+    defaults: { title: 'Todo', icon: 'todo', items: [] },
+    settings: [],
   },
 };
 

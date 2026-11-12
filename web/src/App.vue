@@ -1,13 +1,16 @@
 <script setup>
-import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { GridLayout, GridItem } from 'grid-layout-plus';
 import { LayoutGrid, Pencil, Check, Plus, CloudOff } from 'lucide-vue-next';
-import { state, load, addPanel } from './store/layout.js';
+import { state, load, addPanel, DEFAULT_TITLE } from './store/layout.js';
 import Panel from './components/Panel.vue';
 import SettingsModal from './components/SettingsModal.vue';
 
 const settingsTarget = ref(null); // the plugin instance being configured
 const openSettings = (_panel, plugin) => (settingsTarget.value = plugin);
+
+// The browser tab title follows the layout's title setting (blank falls back to the default).
+watch(() => state.title, (t) => (document.title = (t ?? '').trim() || DEFAULT_TITLE), { immediate: true });
 
 // Header clock: 24-hour HH:MM:SS, re-armed on every second boundary so it never drifts or skips a second.
 const now = ref(new Date());
@@ -46,6 +49,16 @@ const date = computed(() => now.value.toLocaleDateString([], { weekday: 'long', 
           <CloudOff :size="14" /> Backend offline
         </span>
         <template v-if="state.editing">
+          <label class="flex items-center gap-2 text-xs text-zinc-400">
+            Page title
+            <input
+              v-model="state.title"
+              maxlength="60"
+              :placeholder="DEFAULT_TITLE"
+              aria-label="Page title"
+              class="w-44 rounded-lg border border-zinc-700 bg-zinc-950 px-2.5 py-1.5 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-sky-500 sm:w-56"
+            />
+          </label>
           <button class="flex items-center gap-1.5 rounded-lg bg-zinc-800 px-3 py-1.5 text-sm text-zinc-200 hover:bg-zinc-700" @click="addPanel"><Plus :size="15" /> Add panel</button>
         </template>
         <button

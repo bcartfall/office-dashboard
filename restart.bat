@@ -23,6 +23,6 @@ if not exist "%PID_FILE%" (
 )
 
 echo Starting Office Dashboard.
-wscript.exe start-dashboard.vbs
+wscript.exe start.vbs
 
 endlocal

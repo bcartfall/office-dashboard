@@ -4,7 +4,10 @@ import { plugins as registry } from '../plugins/index.js';
 
 const LS_KEY = 'office-dashboard:layout:v1';
 
+export const DEFAULT_TITLE = 'Office Dashboard';
+
 export const state = reactive({
+  title: DEFAULT_TITLE, // browser tab / page title (set in Edit layout mode)
   panels: [], // grid items: { i, title, x, y, w, h, plugins: [{ id, type, config }] }
   editing: false,
   ready: false,
@@ -79,6 +82,7 @@ export async function load() {
       /* storage unavailable or corrupt */
     }
   }
+  state.title = typeof saved?.title === 'string' ? saved.title.slice(0, 60) : DEFAULT_TITLE;
   state.panels = sanitize(saved?.panels) ?? defaultPanels();
   state.ready = true;
   startAutosave();
@@ -87,7 +91,7 @@ export async function load() {
 let timer;
 function startAutosave() {
   watch(
-    () => state.panels,
+    () => [state.panels, state.title],
     () => {
       clearTimeout(timer);
       timer = setTimeout(save, 600);
@@ -97,7 +101,7 @@ function startAutosave() {
 }
 
 async function save() {
-  const payload = { version: 1, panels: clone(state.panels) };
+  const payload = { version: 1, title: state.title, panels: clone(state.panels) };
   try {
     localStorage.setItem(LS_KEY, JSON.stringify(payload));
   } catch {
