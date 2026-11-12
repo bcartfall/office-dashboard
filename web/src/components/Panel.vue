@@ -13,6 +13,7 @@ const emit = defineEmits(['settings']);
 function dropAtEnd(e) {
   if (!dnd.pluginId) return;
   e.preventDefault();
+  e.stopPropagation();
   movePlugin(dnd.panelId, dnd.pluginId, props.panel.i, null);
   dnd.panelId = dnd.pluginId = dnd.overId = null;
 }

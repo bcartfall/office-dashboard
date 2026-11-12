@@ -2,12 +2,37 @@
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { GridLayout, GridItem } from 'grid-layout-plus';
 import { LayoutGrid, Pencil, Check, Plus, CloudOff } from 'lucide-vue-next';
-import { state, load, addPanel, DEFAULT_TITLE } from './store/layout.js';
+import { state, load, addPanel, addStandalonePlugin, removePanel, detachPlugin, dnd, DEFAULT_TITLE } from './store/layout.js';
 import Panel from './components/Panel.vue';
+import PluginCard from './components/PluginCard.vue';
+import AddPluginMenu from './components/AddPluginMenu.vue';
 import SettingsModal from './components/SettingsModal.vue';
 
 const settingsTarget = ref(null); // the plugin instance being configured
 const openSettings = (_panel, plugin) => (settingsTarget.value = plugin);
+
+// What the grid must NOT start dragging from. The library's default is just "a, button", so without ".no-drag" it
+// swallowed the pointer-down of every drag inside a panel (plugin re-ordering, task re-ordering) before the browser's own
+// drag-and-drop could start.
+const DRAG_IGNORE = 'a, button, input, textarea, select, .no-drag';
+
+// Dropping a plugin that is being dragged out of a panel onto the bare grid background makes it a standalone plugin there.
+const ROW_PITCH = 40 + 14; // :row-height + :margin in the template
+const gridWrap = ref(null);
+const onBackgroundDragOver = (e) => {
+  if (dnd.pluginId) e.preventDefault();
+};
+function onBackgroundDrop(e) {
+  if (!dnd.pluginId) return;
+  e.preventDefault();
+  if (!e.target.closest?.('.vgl-item')) {
+    const r = gridWrap.value.getBoundingClientRect();
+    const x = Math.max(0, Math.min(11, Math.floor(((e.clientX - r.left) / r.width) * 12)));
+    const y = Math.max(0, Math.floor((e.clientY - r.top) / ROW_PITCH));
+    detachPlugin(dnd.panelId, dnd.pluginId, { x, y });
+  }
+  dnd.panelId = dnd.pluginId = dnd.overId = null; // the dragged element may be gone, so no dragend will fire
+}
 
 // The browser tab title follows the layout's title setting (blank falls back to the default).
 watch(() => state.title, (t) => (document.title = (t ?? '').trim() || DEFAULT_TITLE), { immediate: true });
@@ -60,6 +85,7 @@ const date = computed(() => now.value.toLocaleDateString([], { weekday: 'long', 
             />
           </label>
           <button class="flex items-center gap-1.5 rounded-lg bg-zinc-800 px-3 py-1.5 text-sm text-zinc-200 hover:bg-zinc-700" @click="addPanel"><Plus :size="15" /> Add panel</button>
+          <AddPluginMenu @add="addStandalonePlugin" />
         </template>
         <button
           class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition"
@@ -73,8 +99,8 @@ const date = computed(() => now.value.toLocaleDateString([], { weekday: 'long', 
       </div>
     </header>
 
+    <div v-if="state.ready" ref="gridWrap" class="min-h-[60vh]" @dragover="onBackgroundDragOver" @drop="onBackgroundDrop">
     <GridLayout
-      v-if="state.ready"
       v-model:layout="state.panels"
       :col-num="12"
       :row-height="40"
@@ -84,10 +110,22 @@ const date = computed(() => now.value.toLocaleDateString([], { weekday: 'long', 
       :vertical-compact="true"
       :use-css-transforms="true"
     >
-      <template #item="{ item }">
-        <Panel :panel="item" :editing="state.editing" @settings="openSettings" />
-      </template>
+      <GridItem v-for="item in state.panels" :key="item.i" :i="item.i" :x="item.x" :y="item.y" :w="item.w" :h="item.h" :drag-ignore-from="DRAG_IGNORE">
+        <!-- A panel holding plugins, or a plugin on its own: both fill their grid cell -->
+        <Panel v-if="item.plugins" :panel="item" :editing="state.editing" @settings="openSettings" />
+        <PluginCard
+          v-else-if="item.plugin"
+          fill
+          :plugin="item.plugin"
+          :panel-id="item.i"
+          :index="0"
+          :editing="state.editing"
+          @settings="openSettings(item, item.plugin)"
+          @remove="removePanel(item.i)"
+        />
+      </GridItem>
     </GridLayout>
+    </div>
     <p v-else class="py-20 text-center text-sm text-zinc-600">Loading…</p>
 
     <SettingsModal v-if="settingsTarget" :plugin="settingsTarget" @close="settingsTarget = null" />

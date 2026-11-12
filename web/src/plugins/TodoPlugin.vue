@@ -51,8 +51,22 @@ function remove(id) {
   if (i >= 0) items.value.splice(i, 1);
 }
 
-// Keyboard reordering: Alt + Arrow Up / Down on a focused task.
+// Clicking anywhere on a task toggles it - except on the "..." button (it opens the menu), after selecting text,
+// right after a click that merely dismissed the context menu, and while re-ordering.
+function onRowClick(e, task) {
+  if (e.button !== 0 || drag.value.id) return;
+  if (performance.now() - menuDismissedAt < 500) return;
+  if (window.getSelection()?.toString()) return;
+  task.done = !task.done;
+}
+
+// Keyboard: Space / Enter toggles the focused task; Alt + Arrow Up / Down re-orders it.
 function onRowKey(e, task) {
+  if ((e.key === ' ' || e.key === 'Enter') && !e.altKey && e.target === e.currentTarget) {
+    e.preventDefault();
+    task.done = !task.done;
+    return;
+  }
   if (!e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
   e.preventDefault();
   const i = indexOf(task.id);
@@ -135,8 +149,11 @@ function closeMenu() {
   window.removeEventListener('resize', closeMenu);
   document.removeEventListener('scroll', closeMenu, true);
 }
+let menuDismissedAt = -Infinity;
 const onOutside = (e) => {
-  if (!menuEl.value?.contains(e.target)) closeMenu();
+  if (menuEl.value?.contains(e.target)) return;
+  menuDismissedAt = performance.now();
+  closeMenu();
 };
 function onMenuKey(e) {
   if (e.key === 'Escape') {
@@ -177,33 +194,35 @@ const menuItem =
         :data-task="task.id"
         tabindex="0"
         draggable="true"
-        class="group/task relative flex items-start gap-1.5 rounded-lg py-1 pl-0.5 pr-1 outline-none transition hover:bg-zinc-800/60 focus-visible:ring-1 focus-visible:ring-sky-500/70"
+        role="checkbox"
+        :aria-checked="!!task.done"
+        :aria-label="task.text"
+        class="group/task relative flex cursor-pointer items-start gap-1.5 rounded-lg py-1 pl-0.5 pr-1 outline-none transition hover:bg-zinc-800/60 focus-visible:ring-1 focus-visible:ring-sky-500/70"
         :class="drag.id === task.id ? 'opacity-40' : ''"
         @dragstart="onDragStart($event, task)"
         @dragend="endDrag"
         @dragover="onRowDragOver($event, i)"
         @drop="onDrop"
+        @click="onRowClick($event, task)"
         @contextmenu="openMenu($event, task)"
         @keydown="onRowKey($event, task)"
       >
         <span v-if="showLineBefore(i)" class="pointer-events-none absolute inset-x-0 -top-px h-0.5 rounded bg-sky-400" />
         <GripVertical :size="14" class="mt-1 shrink-0 cursor-grab text-zinc-700 transition group-hover/task:text-zinc-500" aria-hidden="true" />
 
-        <label class="mt-px flex shrink-0 cursor-pointer items-center" :title="task.done ? 'Mark as not completed' : 'Mark as completed'">
-          <input v-model="task.done" type="checkbox" class="peer sr-only" :aria-label="`Completed: ${task.text}`" />
-          <span
-            class="grid size-4 place-items-center rounded border transition peer-focus-visible:ring-2 peer-focus-visible:ring-sky-400/70"
-            :class="task.done ? 'border-sky-500 bg-sky-500 text-zinc-950' : 'border-zinc-600 bg-zinc-950 hover:border-sky-400'"
-          >
-            <Check v-if="task.done" :size="12" stroke-width="3.5" />
-          </span>
-        </label>
+        <span
+          class="mt-px grid size-4 shrink-0 place-items-center rounded border transition"
+          :class="task.done ? 'border-sky-500 bg-sky-500 text-zinc-950' : 'border-zinc-600 bg-zinc-950 group-hover/task:border-sky-400'"
+          aria-hidden="true"
+        >
+          <Check v-if="task.done" :size="12" stroke-width="3.5" />
+        </span>
 
-        <span class="min-w-0 flex-1 select-text whitespace-pre-wrap break-words text-sm leading-5" :class="task.done ? 'text-zinc-500 line-through decoration-zinc-600' : 'text-zinc-200'">{{ task.text }}</span>
+        <span class="min-w-0 flex-1 whitespace-pre-wrap break-words text-sm leading-5" :class="task.done ? 'text-zinc-500 line-through decoration-zinc-600' : 'text-zinc-200'">{{ task.text }}</span>
 
         <button
           type="button"
-          class="shrink-0 rounded p-0.5 text-zinc-500 opacity-0 transition hover:bg-zinc-700 hover:text-zinc-100 focus:opacity-100 group-hover/task:opacity-100"
+          class="shrink-0 cursor-pointer rounded p-0.5 text-zinc-500 opacity-0 transition hover:bg-zinc-700 hover:text-zinc-100 focus:opacity-100 group-hover/task:opacity-100"
           :aria-label="`Actions for ${task.text}`"
           aria-haspopup="menu"
           @click="openMenu($event, task, $event.currentTarget)"

@@ -17,7 +17,7 @@
 import { Router } from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
-import Database from 'better-sqlite3';
+import { DatabaseSync } from 'node:sqlite'; // built into Node 22.13+, no native add-on to compile
 import { DATA_DIR, DEV } from './config.js';
 import { layoutEvents, readLayout, pluginInstances } from './layout.js';
 
@@ -34,10 +34,12 @@ let q = null;
 
 function openDb() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
-  db = new Database(DB_FILE);
-  db.pragma('journal_mode = WAL');
-  db.pragma('synchronous = NORMAL');
-  db.pragma('foreign_keys = ON');
+  db = new DatabaseSync(DB_FILE);
+  db.exec(`
+    PRAGMA journal_mode = WAL;
+    PRAGMA synchronous = NORMAL;
+    PRAGMA foreign_keys = ON;
+  `);
   db.exec(`
     CREATE TABLE IF NOT EXISTS instances (
       id    TEXT PRIMARY KEY,
@@ -137,10 +139,15 @@ export function startBackground(plugins) {
 
   /** Start a fresh history for an instance (new or changed signature). */
   function resetStored(id, entry) {
-    db.transaction(() => {
+    db.exec('BEGIN');
+    try {
       q.upsertInstance.run({ id, type: entry.type, sig: entry.sig, epoch: entry.epoch });
       q.clearSamples.run(id);
-    })();
+      db.exec('COMMIT');
+    } catch (err) {
+      db.exec('ROLLBACK');
+      throw err;
+    }
   }
 
   async function runOne(entry) {
@@ -183,7 +190,7 @@ export function startBackground(plugins) {
 
   function close() {
     try {
-      if (db?.open) db.close();
+      db?.close();
     } catch {}
   }
 }

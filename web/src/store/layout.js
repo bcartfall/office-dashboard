@@ -8,7 +8,9 @@ export const DEFAULT_TITLE = 'Office Dashboard';
 
 export const state = reactive({
   title: DEFAULT_TITLE, // browser tab / page title (set in Edit layout mode)
-  panels: [], // grid items: { i, title, x, y, w, h, plugins: [{ id, type, config }] }
+  // Grid items. Either a panel:            { i, title, x, y, w, h, plugins: [{ id, type, config }] }
+  //             or a standalone plugin:    { i, x, y, w, h, plugin: { id, type, config } }
+  panels: [],
   editing: false,
   ready: false,
   offline: false,
@@ -46,25 +48,31 @@ function defaultPanels() {
   ];
 }
 
+function sanitizePlugin(pl) {
+  const config = { ...clone(registry[pl.type]?.defaults ?? {}), ...(pl.config ?? {}) };
+  // Calendars used to be ICS feeds ({ url }); they are Google calendars now, so drop the old entries.
+  if (pl.type === 'calendar') config.calendars = (Array.isArray(config.calendars) ? config.calendars : []).filter((c) => c && c.id && !c.url);
+  return { id: String(pl.id ?? uid()), type: pl.type, config };
+}
+
 /** Accept whatever was persisted, repair it, and fill in new default settings. */
 function sanitize(panels) {
   if (!Array.isArray(panels)) return null;
-  return panels.map((p, n) => ({
-    i: String(p.i ?? uid()),
-    title: String(p.title ?? 'Panel'),
-    x: Number.isFinite(p.x) ? p.x : 0,
-    y: Number.isFinite(p.y) ? p.y : n * 6,
-    w: Number.isFinite(p.w) ? p.w : 6,
-    h: Number.isFinite(p.h) ? p.h : 6,
-    plugins: (Array.isArray(p.plugins) ? p.plugins : [])
-      .filter((pl) => pl && typeof pl.type === 'string')
-      .map((pl) => {
-        const config = { ...clone(registry[pl.type]?.defaults ?? {}), ...(pl.config ?? {}) };
-        // Calendars used to be ICS feeds ({ url }); they are Google calendars now, so drop the old entries.
-        if (pl.type === 'calendar') config.calendars = (Array.isArray(config.calendars) ? config.calendars : []).filter((c) => c && c.id && !c.url);
-        return { id: String(pl.id ?? uid()), type: pl.type, config };
-      }),
-  }));
+  return panels.map((p, n) => {
+    const pos = {
+      i: String(p.i ?? uid()),
+      x: Number.isFinite(p.x) ? p.x : 0,
+      y: Number.isFinite(p.y) ? p.y : n * 6,
+      w: Number.isFinite(p.w) ? p.w : 6,
+      h: Number.isFinite(p.h) ? p.h : 6,
+    };
+    if (p.plugin && typeof p.plugin.type === 'string') return { ...pos, plugin: sanitizePlugin(p.plugin) };
+    return {
+      ...pos,
+      title: String(p.title ?? 'Panel'),
+      plugins: (Array.isArray(p.plugins) ? p.plugins : []).filter((pl) => pl && typeof pl.type === 'string').map(sanitizePlugin),
+    };
+  });
 }
 
 export async function load() {
@@ -123,6 +131,23 @@ export function addPanel() {
   state.panels.push(createPanel('New panel', [], { x: 0, y: bottom, w: 6, h: 5 }));
 }
 
+/** Default grid size of a plugin that lives outside a panel. */
+function standaloneSize(type) {
+  return registry[type]?.kind === 'tile' ? { w: 2, h: 3 } : { w: 4, h: 7 };
+}
+
+function createStandalone(plugin, pos = {}) {
+  const bottom = state.panels.reduce((m, p) => Math.max(m, p.y + p.h), 0);
+  const item = { i: uid(), x: 0, y: bottom, ...standaloneSize(plugin.type), ...pos, plugin };
+  item.x = Math.max(0, Math.min(item.x, 12 - item.w)); // keep it inside the 12-column grid
+  return item;
+}
+
+/** Add a plugin directly to the dashboard grid (no panel around it). */
+export function addStandalonePlugin(type) {
+  state.panels.push(createStandalone(createPlugin(type)));
+}
+
 export function removePanel(id) {
   const idx = state.panels.findIndex((p) => p.i === id);
   if (idx >= 0) state.panels.splice(idx, 1);
@@ -139,17 +164,37 @@ export function removePlugin(panelId, pluginId) {
   if (idx >= 0) panel.plugins.splice(idx, 1);
 }
 
-/** Move a plugin instance (keeping its config) to `toIndex` of any panel. */
-export function movePlugin(fromPanelId, pluginId, toPanelId, toIndex) {
-  const from = findPanel(fromPanelId);
+/**
+ * Move a plugin instance (keeping its config) to `toIndex` of a panel. `fromId` is the grid item it
+ * currently lives in: a panel, or a standalone plugin (which disappears once it is inside the panel).
+ */
+export function movePlugin(fromId, pluginId, toPanelId, toIndex) {
+  const from = findPanel(fromId);
   const to = findPanel(toPanelId);
-  if (!from || !to) return;
-  const idx = from.plugins.findIndex((p) => p.id === pluginId);
-  if (idx < 0) return;
-  const [item] = from.plugins.splice(idx, 1);
+  if (!from || !to || !to.plugins) return;
+  let item;
+  if (from.plugin) {
+    if (from.plugin.id !== pluginId) return;
+    item = from.plugin;
+    state.panels.splice(state.panels.indexOf(from), 1);
+  } else {
+    const idx = from.plugins.findIndex((p) => p.id === pluginId);
+    if (idx < 0) return;
+    [item] = from.plugins.splice(idx, 1);
+  }
   const at = toIndex == null ? to.plugins.length : Math.max(0, Math.min(toIndex, to.plugins.length));
   to.plugins.splice(at, 0, item);
 }
 
+/** Take a plugin out of its panel and place it on the grid by itself at `pos` ({ x, y }). */
+export function detachPlugin(fromPanelId, pluginId, pos) {
+  const from = findPanel(fromPanelId);
+  const idx = from?.plugins?.findIndex((p) => p.id === pluginId) ?? -1;
+  if (idx < 0) return;
+  const [plugin] = from.plugins.splice(idx, 1);
+  state.panels.push(createStandalone(plugin, pos));
+}
+
 /** Shared drag state for plugin drag & drop between panels. */
+// panelId = id of the grid item (panel or standalone plugin) the dragged plugin comes from.
 export const dnd = reactive({ panelId: null, pluginId: null, overId: null });

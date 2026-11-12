@@ -5,6 +5,7 @@ Vue 3 + Tailwind frontend, Node/Express backend.
 
 - **Panels** you can drag around and resize (grid layout, auto-saved).
 - **Plugins** inside panels — each has an icon + title, its own settings, and can be added any number of times.
+- Plugins don't need a panel: in *Edit layout* mode use the header's **+ Plugin** to place one directly on the grid (it fills its cell like a panel does), or drag a plugin out of a panel onto empty grid space. Drag a standalone plugin's grip onto a panel to move it back in.
 - Plugin elements **auto-fill** their panel and re-flow as you add, remove, or drag them (even between panels).
 - Plugins included: CPU load, Memory, Disk (usage + read/write speed), GPU (utilization + dedicated memory),
   Calendar (Google Calendar API, any number of calendars each with its own color), Launch App (with hotkeys),

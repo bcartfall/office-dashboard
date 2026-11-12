@@ -22,10 +22,12 @@ export async function readLayout() {
 /** Every plugin instance in the layout: [{ id, type, config }] */
 export function pluginInstances(layout) {
   const out = [];
-  for (const panel of Array.isArray(layout?.panels) ? layout.panels : []) {
-    for (const p of Array.isArray(panel?.plugins) ? panel.plugins : []) {
-      if (p && typeof p.id === 'string' && typeof p.type === 'string') out.push({ id: p.id, type: p.type, config: p.config && typeof p.config === 'object' ? p.config : {} });
-    }
+  const add = (p) => {
+    if (p && typeof p.id === 'string' && typeof p.type === 'string') out.push({ id: p.id, type: p.type, config: p.config && typeof p.config === 'object' ? p.config : {} });
+  };
+  for (const item of Array.isArray(layout?.panels) ? layout.panels : []) {
+    for (const p of Array.isArray(item?.plugins) ? item.plugins : []) add(p);
+    add(item?.plugin); // a plugin placed on the grid without a panel
   }
   return out;
 }
