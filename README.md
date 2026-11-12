@@ -66,7 +66,7 @@ npm run dev:web        # Vite on :5256 (proxies /api to :3943)
 ```
 
 Development uses different ports from production (`npm start` = :3944), so both can run at once. They share
-`data/layout.json`; each keeps its own graph history (`history.dev.json` vs `history.json`).
+`data/layout.json`; each keeps its own graph history (`history.dev.db` vs `history.db`).
 
 ## Using it
 
@@ -104,7 +104,7 @@ Connect again) to avoid that. `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` enviro
 calendars from older versions are dropped on load.
 
 **Graph history**: CPU, Memory, Disk and GPU are sampled by the *server* for every instance in your layout (using that
-instance's own interval and history length), whether or not a browser is open, and saved to `data/history.json`
+instance's own interval and history length), whether or not a browser is open, and saved to `data/history.db` (SQLite)
 (restored after a restart). Graphs are filled as soon as the page loads, and a tab that was hidden catches up when you
 return. The Calendar plugin refreshes its events in the background the same way, so it is ready on page load.
 
