@@ -20,6 +20,8 @@ import HomeAssistantPlugin from './HomeAssistantPlugin.vue';
 import CalendarPlugin from './CalendarPlugin.vue';
 import JellyfinPlugin from './JellyfinPlugin.vue';
 import TodoPlugin from './TodoPlugin.vue';
+import NetworkPlugin from './NetworkPlugin.vue';
+import CatPlugin from './CatPlugin.vue';
 import { api } from '../api.js';
 import { bytes } from '../format.js';
 
@@ -104,13 +106,59 @@ export const plugins = {
       history,
     ],
   },
+  network: {
+    name: 'Network Speed',
+    description: 'LAN link speed and traffic, plus Internet speed test',
+    kind: 'widget',
+    minHeight: 270,
+    icon: 'network',
+    component: NetworkPlugin,
+    defaults: { title: 'Network', icon: 'network', intervalSeconds: 3, historyPoints: 48, testMinutes: 30 },
+    settings: [
+      { ...interval(3), label: 'LAN update interval (seconds)' },
+      {
+        key: 'testMinutes',
+        label: 'Internet speed test every (minutes, 0 = off)',
+        type: 'number',
+        min: 0,
+        max: 1440,
+        integer: true,
+        default: 30,
+        hint: 'Each test downloads about 12 MB and uploads 4 MB, run by the server in the background (minimum 5 minutes). LAN figures use no data.',
+      },
+      { ...history, label: 'Graph history (speed tests)', default: 48 },
+    ],
+  },
+  cat: {
+    name: 'Cat',
+    description: 'A cat that follows your mouse. Click it!',
+    kind: 'widget',
+    minHeight: 200,
+    basis: 220,
+    icon: 'cat',
+    component: CatPlugin,
+    defaults: { title: 'Cat', icon: 'cat', sound: true, swatDistance: 130 },
+    settings: [
+      { key: 'sound', label: 'Play sounds (mew and purr)', type: 'checkbox' },
+      {
+        key: 'swatDistance',
+        label: 'Swat distance (pixels)',
+        type: 'number',
+        min: 40,
+        max: 600,
+        integer: true,
+        default: 130,
+        hint: 'How close the pointer must get before the cat starts swatting at it.',
+      },
+    ],
+  },
   'launch-app': {
     name: 'Launch App',
     description: 'Start a program, file or URL',
     kind: 'tile',
     icon: 'rocket',
     component: LaunchAppPlugin,
-    defaults: { title: 'App', icon: 'rocket', command: '', args: '', hotkey: '' },
+    defaults: { title: 'App', icon: 'rocket', command: '', args: '', hotkey: '', foreground: true },
     settings: [
       {
         key: 'command',
@@ -125,6 +173,11 @@ export const plugins = {
         type: 'text',
         placeholder: '--new-window "C:\\My Projects"',
         hint: 'Space separated; use quotes for values containing spaces.',
+      },
+      {
+        key: 'foreground',
+        label: 'Bring the app to the foreground when launched',
+        type: 'checkbox',
       },
       {
         key: 'hotkey',
@@ -198,6 +251,7 @@ export const plugins = {
       desktopClient: 'Jellyfin Desktop|Jellyfin Media Player',
       desktopCommand: '',
       desktopArgs: '',
+      foreground: true,
     },
     settings: [
       {
@@ -224,6 +278,7 @@ export const plugins = {
         hint: 'Started on this machine when the Jellyfin desktop app isn’t running yet; the episode then plays once the app has signed in. Leave blank to only control an app that is already open.',
       },
       { key: 'desktopArgs', label: 'Desktop app arguments', type: 'text' },
+      { key: 'foreground', label: 'Bring the Jellyfin app to the foreground when playing', type: 'checkbox' },
       {
         key: 'desktopClient',
         label: 'Desktop app client name(s)',

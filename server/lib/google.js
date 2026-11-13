@@ -10,6 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { DATA_DIR, PORT } from './config.js';
+import { resilientFetch, describeNetError } from './net.js';
 
 const FILE = path.join(DATA_DIR, 'google.json');
 const SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
@@ -75,12 +76,7 @@ export async function disconnect() {
   access = null;
   if (token) {
     // best effort: also revoke it at Google
-    await fetch(REVOKE_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ token }),
-      signal: AbortSignal.timeout(8000),
-    }).catch(() => {});
+    await resilientFetch(REVOKE_URL, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ token }) }, { timeoutMs: 8000, retries: 0 }).catch(() => {});
   }
 }
 
@@ -143,14 +139,9 @@ let refreshing = null;
 async function tokenRequest(params) {
   let r;
   try {
-    r = await fetch(TOKEN_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams(params),
-      signal: AbortSignal.timeout(10_000),
-    });
+    r = await resilientFetch(TOKEN_URL, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(params) }, { timeoutMs: 10_000 });
   } catch (err) {
-    throw httpError(502, `Cannot reach Google: ${err.cause?.code || err.message}`);
+    throw httpError(502, `Cannot reach Google: ${describeNetError(err.cause || err)}`);
   }
   const body = await r.json().catch(() => ({}));
   if (!r.ok) {
@@ -192,9 +183,9 @@ export async function get(pathname, params = {}) {
     const token = await accessToken(attempt > 0);
     let r;
     try {
-      r = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15_000) });
+      r = await resilientFetch(url, { headers: { Authorization: `Bearer ${token}` } }, { timeoutMs: 15_000 });
     } catch (err) {
-      throw httpError(502, `Cannot reach Google Calendar: ${err.cause?.code || err.message}`);
+      throw httpError(502, `Cannot reach Google Calendar: ${describeNetError(err.cause || err)}`);
     }
     if (r.status === 401 && attempt === 0) continue; // token rejected: refresh once and retry
     if (!r.ok) {

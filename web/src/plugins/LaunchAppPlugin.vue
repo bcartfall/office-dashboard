@@ -17,7 +17,7 @@ async function launch() {
   clearTimeout(reset);
   status.value = 'busy';
   try {
-    await api.post('/plugins/launch-app/run', { command: props.config.command, args: props.config.args });
+    await api.post('/plugins/launch-app/run', { command: props.config.command, args: props.config.args, foreground: props.config.foreground !== false });
     status.value = 'ok';
     message.value = '';
   } catch (e) {

@@ -11,6 +11,8 @@
  */
 import crypto from 'node:crypto';
 import { launch, splitArgs } from './launch-app.js';
+import { resilientFetch, describeNetError } from '../lib/net.js';
+import { focusAppInBackground, processNameFromCommand } from '../lib/focus.js';
 
 const ID_RE = /^[0-9a-f-]{32,36}$/i;
 const IMAGE_TYPES = new Set(['Primary', 'Thumb', 'Backdrop']);
@@ -96,6 +98,11 @@ export default {
         );
       }
       await jf(conn, 'POST', `/Sessions/${session.Id}/Playing`, { playCommand: 'PlayNow', itemIds: itemId, ...(ticks ? { startPositionTicks: ticks } : {}) });
+      // Bring the desktop app's window forward (it keeps running in the background otherwise).
+      if (req.body?.foreground !== false) {
+        const procs = ['jellyfin', processNameFromCommand(command), ...wanted.map((w) => w.replace(/\s+/g, ''))];
+        focusAppInBackground({ processes: procs, titles: ['Jellyfin', ...wanted], timeoutSeconds: launched ? 20 : 8 });
+      }
       res.json({ ok: true, launched, client: session.Client, device: session.DeviceName });
     });
   },
@@ -180,7 +187,7 @@ async function jfRaw({ base, key }, path, query = {}, init = {}) {
   const url = new URL(base + path);
   for (const [k, v] of Object.entries(query)) if (v != null) url.searchParams.set(k, String(v));
   try {
-    return await fetch(url, {
+    return await resilientFetch(url, {
       ...init,
       headers: {
         Authorization: `MediaBrowser Client="Office Dashboard", Device="Dashboard server", DeviceId="office-dashboard", Version="1.0", Token="${key}"`,
@@ -188,10 +195,9 @@ async function jfRaw({ base, key }, path, query = {}, init = {}) {
         Accept: 'application/json',
         ...init.headers,
       },
-      signal: AbortSignal.timeout(10_000),
-    });
+    }, { timeoutMs: 10_000 });
   } catch (err) {
-    throw httpError(502, `Cannot reach Jellyfin: ${err.cause?.code || err.message}`);
+    throw httpError(502, `Cannot reach Jellyfin: ${describeNetError(err.cause || err)}`);
   }
 }
 

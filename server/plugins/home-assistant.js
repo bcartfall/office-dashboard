@@ -4,6 +4,8 @@
  * each plugin instance passes its own url/token, falling back to the
  * HA_URL / HA_TOKEN environment variables.
  */
+import { resilientFetch, describeNetError } from '../lib/net.js';
+
 const SERVICE_RE = /^[a-z0-9_]+\.[a-z0-9_]+$/;
 const ENTITY_RE = /^[a-z0-9_]+\.[a-z0-9_]+$/;
 
@@ -66,14 +68,17 @@ function connection(body = {}) {
 async function ha({ base, token }, method, path, body) {
   let r;
   try {
-    r = await fetch(base + path, {
-      method,
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: body ? JSON.stringify(body) : undefined,
-      signal: AbortSignal.timeout(8000),
-    });
+    r = await resilientFetch(
+      base + path,
+      {
+        method,
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+      },
+      { timeoutMs: 8000 }
+    );
   } catch (err) {
-    throw httpError(502, `Cannot reach Home Assistant: ${err.cause?.code || err.message}`);
+    throw httpError(502, `Cannot reach Home Assistant: ${describeNetError(err.cause || err)}`);
   }
   if (r.status === 401) throw httpError(502, 'Home Assistant rejected the token (401)');
   if (!r.ok) throw httpError(502, `Home Assistant returned ${r.status}: ${(await r.text()).slice(0, 200)}`);

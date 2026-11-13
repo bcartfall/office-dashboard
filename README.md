@@ -9,7 +9,8 @@ Vue 3 + Tailwind frontend, Node/Express backend.
 - Plugin elements **auto-fill** their panel and re-flow as you add, remove, or drag them (even between panels).
 - Plugins included: CPU load, Memory, Disk (usage + read/write speed), GPU (utilization + dedicated memory),
   Calendar (Google Calendar API, any number of calendars each with its own color), Launch App (with hotkeys),
-  Jellyfin "Up Next", Home Assistant buttons, Todo List (reorderable, checkable tasks with a right-click menu).
+  Jellyfin "Up Next", Home Assistant buttons, Todo List (reorderable, checkable tasks with a right-click menu),
+  Network Speed (LAN and Internet shown separately) and a Cat that follows your mouse.
 - The **page title** (browser tab) defaults to "Office Dashboard" and can be changed in *Edit layout* mode.
 
 ## Quick start
@@ -114,8 +115,10 @@ Click OK to save the task.
 | Disk | volume, update interval, history length |
 | GPU | which GPU, update interval, history length |
 | Calendar | Google account connection, which calendars to show (name + color each), days to show, refresh rate |
-| Launch App | command / program / URL, launch arguments, hotkey |
-| Jellyfin | server URL, API key, user, episodes to show, optional desktop-app command |
+| Launch App | command / program / URL, launch arguments, bring to foreground (default on), hotkey |
+| Network Speed | LAN update interval, Internet speed-test interval (0 = off), graph history |
+| Cat | sound on/off, swat distance |
+| Jellyfin | server URL, API key, user, episodes to show, optional desktop-app command, bring app to foreground (default on) |
 | Home Assistant | URL, long-lived token, refresh rate, action buttons |
 
 **Calendar** uses the Google Calendar API (read-only), so every calendar on your account is available - including ones
@@ -146,6 +149,19 @@ Create an API key in Jellyfin (Dashboard → Advanced → API Keys), enter the L
 press *Load users from Jellyfin* and pick yours. Clicking a thumbnail tells the **Jellyfin desktop app** to play that episode
 (remote control through the server, so the app must be running and signed in to the same server). Set *Desktop app command*
 to your `jellyfin-desktop` / `Jellyfin Media Player` executable and the dashboard will start it first if it isn't running.
+
+**Foreground**: *Launch App* and *Jellyfin* bring the program's window to the front after starting it (Windows primary; best effort
+with `osascript` on macOS and `wmctrl`/`xdotool` on Linux). Untick *Bring … to the foreground* in the plugin's settings to disable.
+
+**Network Speed** shows two sections. *LAN*: the adapter's link speed, live send/receive rate and the round-trip time to your router
+(no data used). *Internet*: a real download/upload test (~12 MB down, 4 MB up) that the server runs in the background every N minutes
+(default 30, minimum 5, 0 = off) plus ping to a public host; results are graphed. Override the test servers with
+`SPEEDTEST_DOWN_URL`, `SPEEDTEST_UP_URL`, `SPEEDTEST_PING_HOST`.
+
+**Cat**: its eyes follow the pointer; get close and it swats at it; click for a mew; keep clicking for purring and head-butts.
+
+**After sleep/resume**: server requests use a resilient client (fresh connections, retry with back-off, falls back to the last known IP when
+DNS isn't back yet), and the dashboard retries failed polls within seconds instead of waiting a full interval.
 
 **Launch App** runs on the machine hosting the server. Examples: `code` + `--new-window C:\Projects`,
 `C:\Program Files\App\app.exe` + `--profile work`, or a URL (opens in the default browser).

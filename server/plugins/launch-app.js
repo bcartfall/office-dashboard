@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { focusAppInBackground, processNameFromCommand } from '../lib/focus.js';
 
 /**
  * Launch a program (or open a URL / file) detached from the server.
@@ -18,6 +19,11 @@ export default {
       }
       try {
         await launch(command, args);
+        // Optionally bring the program's window to the front once it has opened (URLs open in the browser as usual).
+        if (req.body?.foreground !== false) {
+          const name = processNameFromCommand(command);
+          if (name) focusAppInBackground({ processes: [name], titles: [name], timeoutSeconds: 15 });
+        }
         res.json({ ok: true });
       } catch (err) {
         res.status(500).json({ error: `Could not start "${command}": ${err.message}` });

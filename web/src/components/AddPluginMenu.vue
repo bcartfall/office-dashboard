@@ -7,23 +7,50 @@ import Icon from './Icon.vue';
 const emit = defineEmits(['add']);
 const open = ref(false);
 const btn = ref(null);
-const pos = ref({ top: 0, left: 0 });
+const menu = ref(null);
+const pos = ref({ top: 0, left: 0, maxHeight: 0 });
+const MARGIN = 8;
+const GAP = 6;
+
+/**
+ * Place the menu under the button, or above it when there is more room there (e.g. the button sits at the
+ * bottom of the screen), and cap its height to the space available so it scrolls instead of running off-screen.
+ */
+function place() {
+  if (!btn.value) return;
+  const r = btn.value.getBoundingClientRect();
+  const width = 280;
+  const below = window.innerHeight - r.bottom - GAP - MARGIN;
+  const above = r.top - GAP - MARGIN;
+  const natural = menu.value?.scrollHeight ?? 0; // full height of the list, measured once it is rendered
+  const flip = natural > below && above > below;
+  const room = Math.max(120, flip ? above : below);
+  const height = Math.min(natural || room, room);
+  pos.value = {
+    top: flip ? Math.max(MARGIN, r.top - GAP - height) : r.bottom + GAP,
+    left: Math.max(MARGIN, Math.min(window.innerWidth - width - MARGIN, r.right - width)),
+    maxHeight: room,
+  };
+}
 
 function toggle() {
   if (open.value) return close();
-  const r = btn.value.getBoundingClientRect();
-  const width = 280;
-  pos.value = { top: r.bottom + 6, left: Math.max(8, Math.min(window.innerWidth - width - 8, r.right - width)) };
+  place();
   open.value = true;
   nextTick(() => {
+    place(); // second pass with the real height
     document.addEventListener('pointerdown', onOutside, true);
     document.addEventListener('keydown', onKey);
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
   });
 }
 function close() {
   open.value = false;
   document.removeEventListener('pointerdown', onOutside, true);
   document.removeEventListener('keydown', onKey);
+  window.removeEventListener('resize', place);
+  window.removeEventListener('scroll', place, true);
 }
 const onOutside = (e) => {
   if (!e.target.closest?.('[data-add-menu]') && !btn.value?.contains(e.target)) close();
@@ -50,10 +77,11 @@ function pick(type) {
   <Teleport to="body">
     <div
       v-if="open"
+      ref="menu"
       data-add-menu
       role="menu"
-      class="fixed z-50 w-70 overflow-hidden rounded-xl border border-zinc-700 bg-zinc-900 p-1 shadow-2xl"
-      :style="{ top: pos.top + 'px', left: pos.left + 'px' }"
+      class="fixed z-50 w-70 overflow-y-auto overscroll-contain rounded-xl border border-zinc-700 bg-zinc-900 p-1 shadow-2xl"
+      :style="{ top: pos.top + 'px', left: pos.left + 'px', maxHeight: pos.maxHeight + 'px' }"
     >
       <button
         v-for="(def, type) in plugins"

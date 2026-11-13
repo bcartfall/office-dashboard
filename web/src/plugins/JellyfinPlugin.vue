@@ -42,6 +42,7 @@ async function play(item) {
       client: props.config.desktopClient,
       command: props.config.desktopCommand,
       args: props.config.desktopArgs,
+      foreground: props.config.foreground !== false,
     });
     state[item.id] = 'ok';
   } catch (e) {
