@@ -75,7 +75,7 @@ Configure the following:
 | Field | Value |
 |---|---|
 | Program/script | `wscript.exe` |
-| Add arguments | `start-dashboard.vbs` |
+| Add arguments | `start.vbs` |
 | Start in | `C:\path\to\office-dashboard` |
 
 Replace `C:\path\to\office-dashboard` with your actual project directory.
