@@ -13,13 +13,15 @@ const DOWN = '#38bdf8';
 const UP = '#fb923c';
 
 const props = defineProps({ config: { type: Object, required: true }, instanceId: { type: String, default: '' } });
-// Graph = the Internet speed-test results (Mbit/s), recorded by the server on its test schedule.
+// Adapter graph = download/upload of the chosen network device (bytes/s), sampled by the server around the clock.
 const hist = useServerHistory(() => props.instanceId, () => props.config.historyPoints, 2);
 const [downs, ups] = hist.series;
 
 const { data, error } = usePolling(async () => {
-  const d = await api.get('/plugins/network/data');
-  await hist.sync(d.internet?.downMbps != null ? [d.internet.downMbps, d.internet.upMbps ?? 0] : null);
+  const q = new URLSearchParams({ iface: props.config.iface || '', test: String(props.config.testMinutes ?? 30) });
+  const d = await api.get(`/plugins/network/data?${q}`);
+  const l = d.lan;
+  await hist.sync(l?.rxBytesPerSec != null ? [l.rxBytesPerSec, l.txBytesPerSec ?? 0] : null);
   return d;
 }, toRef(() => props.config.intervalSeconds));
 
@@ -38,6 +40,10 @@ const linkUse = computed(() => {
   return (bits / (l.linkMbps * 1e6)) * 100;
 });
 
+// Internet graph = the speed-test results the server has kept (Mbit/s).
+const testDowns = computed(() => (net.value?.history ?? []).map((r) => r.down));
+const testUps = computed(() => (net.value?.history ?? []).map((r) => r.up ?? 0));
+
 const ago = computed(() => {
   const t = net.value?.testedAt;
   if (!t) return '';
@@ -53,22 +59,31 @@ const testsOff = computed(() => !(Number(props.config.testMinutes) > 0));
     <section class="space-y-1.5" aria-label="LAN">
       <div class="flex items-baseline justify-between gap-2">
         <h4 class="text-[11px] font-medium uppercase tracking-wide text-zinc-500">LAN</h4>
-        <span class="min-w-0 truncate text-[11px] text-zinc-500" :title="lan?.iface || ''">
-          <template v-if="lan">{{ lan.iface || 'No adapter' }}<template v-if="lan.kind"> · {{ lan.kind }}</template></template>
+        <span class="min-w-0 truncate text-[11px] text-zinc-500" :title="lan ? `${lan.iface || ''} ${lan.description || ''}`.trim() : ''">
+          <template v-if="lan">{{ lan.iface || 'No adapter' }}<template v-if="lan.description && lan.description !== lan.iface"> ({{ lan.description }})</template></template>
         </span>
       </div>
       <div class="flex items-end justify-between gap-3">
         <div class="text-2xl font-semibold tabular-nums leading-none text-zinc-100" title="Negotiated link speed of the adapter">{{ lan ? speed(lan.linkMbps) : '–' }}</div>
         <div class="text-right text-[11px] leading-tight text-zinc-500">
           <div v-if="lan?.gateway" title="Round-trip time to your router">router {{ ms(lan.latencyMs) }}</div>
-          <div v-else-if="lan">no gateway</div>
         </div>
       </div>
       <Meter :value="linkUse" :color="DOWN" />
       <div class="flex justify-between text-xs tabular-nums text-zinc-300">
-        <span class="flex items-center gap-1" :style="{ color: DOWN }"><ArrowDown :size="12" /><span class="text-zinc-300">{{ lan ? live(lan.rxBytesPerSec) : '–' }}</span></span>
-        <span class="flex items-center gap-1" :style="{ color: UP }"><ArrowUp :size="12" /><span class="text-zinc-300">{{ lan ? live(lan.txBytesPerSec) : '–' }}</span></span>
+        <span class="flex items-center gap-1" :style="{ color: DOWN }" title="Download"><ArrowDown :size="12" /><span class="text-zinc-300">{{ lan ? live(lan.rxBytesPerSec) : '–' }}</span></span>
+        <span class="flex items-center gap-1" :style="{ color: UP }" title="Upload"><ArrowUp :size="12" /><span class="text-zinc-300">{{ lan ? live(lan.txBytesPerSec) : '–' }}</span></span>
       </div>
+      <div class="h-14">
+        <Sparkline
+          :series="[
+            { values: downs, color: DOWN },
+            { values: ups, color: UP },
+          ]"
+          :capacity="config.historyPoints"
+        />
+      </div>
+      <p v-if="lan && !lan.found" class="text-[11px] text-amber-300/80">Network device “{{ lan.iface }}” was not found - pick another in the settings.</p>
     </section>
 
     <div class="border-t border-zinc-800" />
@@ -84,7 +99,7 @@ const testsOff = computed(() => !(Number(props.config.testMinutes) > 0));
         </span>
       </div>
       <div class="flex items-end justify-between gap-3">
-        <div class="flex gap-4 text-2xl font-semibold tabular-nums leading-none">
+        <div class="flex flex-wrap gap-x-4 gap-y-1 whitespace-nowrap text-xl font-semibold tabular-nums leading-none">
           <span class="flex items-center gap-1" :style="{ color: DOWN }" title="Download"><ArrowDown :size="16" />{{ speed(net?.downMbps) }}</span>
           <span class="flex items-center gap-1" :style="{ color: UP }" title="Upload"><ArrowUp :size="16" />{{ speed(net?.upMbps) }}</span>
         </div>
@@ -93,10 +108,10 @@ const testsOff = computed(() => !(Number(props.config.testMinutes) > 0));
       <div class="min-h-10 flex-1">
         <Sparkline
           :series="[
-            { values: downs, color: DOWN },
-            { values: ups, color: UP },
+            { values: testDowns, color: DOWN },
+            { values: testUps, color: UP },
           ]"
-          :capacity="config.historyPoints"
+          :capacity="48"
         />
       </div>
       <p v-if="net?.error" class="text-[11px] text-amber-300/80">{{ net.error }}</p>

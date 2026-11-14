@@ -5,8 +5,17 @@ import { fileURLToPath } from 'node:url';
 import { guard } from './lib/security.js';
 import layoutRouter from './lib/layout.js';
 import { historyRouter, startBackground } from './lib/background.js';
-import { PORT, HOST, DEV, VITE_PORT } from './lib/config.js';
+import { PORT, HOST, DEV, VITE_PORT, DATA_DIR } from './lib/config.js';
 import { loadPlugins } from './plugins/index.js';
+
+// save pid
+process.title = 'office-dashboard';
+fs.mkdirSync(DATA_DIR, { recursive: true });
+fs.writeFileSync(
+  path.join(DATA_DIR, 'office-dashboard.pid'),
+  `${process.pid}`,
+  'utf8'
+);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // HOST defaults to loopback only: this server can launch programs on your machine.

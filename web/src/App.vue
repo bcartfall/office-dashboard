@@ -59,8 +59,8 @@ const date = computed(() => now.value.toLocaleDateString([], { weekday: 'long', 
 </script>
 
 <template>
-  <div class="mx-auto max-w-[1800px] px-4 pb-10 pt-4 sm:px-6" :class="{ 'no-anim': !settled }">
-    <header class="mb-4 flex flex-wrap items-center gap-3">
+  <div class="mx-auto px-4 pb-0 pt-2 sm:px-6" :class="{ 'no-anim': !settled }">
+    <header class="mb-2 flex flex-wrap items-center gap-3">
       <div class="flex items-center gap-2.5">
         <div class="grid size-9 place-items-center rounded-xl bg-sky-500/15 text-sky-300"><LayoutGrid :size="18" /></div>
         <div>
@@ -94,7 +94,7 @@ const date = computed(() => now.value.toLocaleDateString([], { weekday: 'long', 
           @click="state.editing = !state.editing"
         >
           <component :is="state.editing ? Check : Pencil" :size="15" />
-          {{ state.editing ? 'Done' : 'Edit layout' }}
+          {{ state.editing ? 'Done' : '' }}
         </button>
       </div>
     </header>

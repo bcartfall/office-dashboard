@@ -10,7 +10,14 @@ async function request(method, path, body) {
   } catch {
     /* non-JSON response */
   }
-  if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);
+  if (!res.ok) {
+    // The API answers a plain "Not found" for a route the running server doesn't have: usually a plugin added in an
+    // update while the old server process is still running.
+    if (res.status === 404 && path.startsWith('/plugins/') && data?.error === 'Not found') {
+      throw new Error('The dashboard server doesn’t know this plugin yet - restart the server (and rebuild the web app) after updating.');
+    }
+    throw new Error(data?.error || `Request failed (${res.status})`);
+  }
   return data;
 }
 

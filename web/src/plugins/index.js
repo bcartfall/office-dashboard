@@ -108,14 +108,27 @@ export const plugins = {
   },
   network: {
     name: 'Network Speed',
-    description: 'LAN link speed and traffic, plus Internet speed test',
+    description: 'Adapter upload/download graph, link speed, Internet speed test',
     kind: 'widget',
-    minHeight: 270,
+    minHeight: 340,
     icon: 'network',
     component: NetworkPlugin,
-    defaults: { title: 'Network', icon: 'network', intervalSeconds: 3, historyPoints: 48, testMinutes: 30 },
+    defaults: { title: 'Network', icon: 'network', iface: '', intervalSeconds: 3, historyPoints: 90, testMinutes: 30 },
     settings: [
-      { ...interval(3), label: 'LAN update interval (seconds)' },
+      {
+        key: 'iface',
+        label: 'Network device',
+        type: 'select',
+        loadOptions: async () => [
+          { value: '', label: 'Default adapter (auto)' },
+          ...(await api.get('/plugins/network/interfaces')).map((n) => ({
+            value: n.iface,
+            label: `${n.iface}${n.description ? ` (${n.description})` : ''}${n.default ? ' - default' : ''}`,
+          })),
+        ],
+      },
+      { ...interval(3), label: 'Update interval (seconds)' },
+      { ...history, label: 'Graph history (samples)', default: 90 },
       {
         key: 'testMinutes',
         label: 'Internet speed test every (minutes, 0 = off)',
@@ -124,9 +137,8 @@ export const plugins = {
         max: 1440,
         integer: true,
         default: 30,
-        hint: 'Each test downloads about 12 MB and uploads 4 MB, run by the server in the background (minimum 5 minutes). LAN figures use no data.',
+        hint: 'Each test downloads about 12 MB and uploads 4 MB, run by the server in the background (minimum 5 minutes). The first one runs as soon as the plugin is added. Adapter figures use no data.',
       },
-      { ...history, label: 'Graph history (speed tests)', default: 48 },
     ],
   },
   cat: {

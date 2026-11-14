@@ -153,10 +153,16 @@ to your `jellyfin-desktop` / `Jellyfin Media Player` executable and the dashboar
 **Foreground**: *Launch App* and *Jellyfin* bring the program's window to the front after starting it (Windows primary; best effort
 with `osascript` on macOS and `wmctrl`/`xdotool` on Linux). Untick *Bring … to the foreground* in the plugin's settings to disable.
 
-**Network Speed** shows two sections. *LAN*: the adapter's link speed, live send/receive rate and the round-trip time to your router
-(no data used). *Internet*: a real download/upload test (~12 MB down, 4 MB up) that the server runs in the background every N minutes
-(default 30, minimum 5, 0 = off) plus ping to a public host; results are graphed. Override the test servers with
+**Network Speed** shows two sections. *LAN*: pick the *Network device* in the settings (e.g. `Ethernet (Realtek PCIe 2.5GbE Family Controller)` or
+`Wi-Fi (MediaTek Wi-Fi 7 MT7925…)`); it shows that adapter's link speed, live upload/download with a graph (sampled by the server) and the
+round-trip time to your router (no data used; on Windows the link speed and gateway are read with PowerShell `Get-NetAdapter` / `Get-NetRoute`). *Internet*: a real download/upload test (~12 MB down, 4 MB up) that the server runs in the background every N minutes
+(default 30, minimum 5, 0 = off; the first one runs as soon as the plugin is added) plus ping to a public host; results are graphed and kept in
+`data/network-speedtest.json`. The test tries Cloudflare, then OVH and Tele2 if one refuses. Override the test servers with
 `SPEEDTEST_DOWN_URL`, `SPEEDTEST_UP_URL`, `SPEEDTEST_PING_HOST`.
+
+**Todo**: checked tasks are removed after 5 seconds (uncheck within that time to keep one). Right-click a task for *Edit label*, move, complete and
+remove; right-click empty space for *Show history* - a paginated list (newest completed first) of every task with its created / completed time,
+stored in SQLite (`data/todo.db`).
 
 **Cat**: its eyes follow the pointer; get close and it swats at it; click for a mew; keep clicking for purring and head-butts.
 

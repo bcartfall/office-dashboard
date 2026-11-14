@@ -51,7 +51,7 @@ End If
 
 ' Launch npm through hidden PowerShell process
 psCommand = "$p = Start-Process -FilePath 'cmd.exe' " & _
-    "-ArgumentList '/c npm start >> """ & logFile & """ 2>&1' " & _
+    "-ArgumentList '/c node server/index.js >> """ & logFile & """ 2>&1' " & _
     "-WorkingDirectory '" & Replace(projectDir, "'", "''") & "' " & _
     "-WindowStyle Hidden -PassThru; " & _
     "$p.Id | Set-Content -Path '" & Replace(pidFile, "'", "''") & "'"
